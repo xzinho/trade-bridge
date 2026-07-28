@@ -4,7 +4,6 @@ const app = express();
 app.use(express.json());
 app.use(express.text({ type: '*/*' }));
 
-// Armazena os sinais em memória
 let signals = [];
 let signalIdCounter = 0;
 
@@ -25,7 +24,6 @@ app.get('/send', (req, res) => {
   
   signals.push(signal);
   
-  // Mantém apenas os últimos 50 sinais
   if (signals.length > 50) {
     signals = signals.slice(-50);
   }
@@ -34,7 +32,7 @@ app.get('/send', (req, res) => {
   res.send(`OK:${signal.id}`);
 });
 
-// Rota para o MT5 BUSCAR sinais novos
+// Rota para o MT5 BUSCAR sinais novos (com timestamp)
 app.get('/get', (req, res) => {
   const lastId = parseInt(req.query.last_id) || 0;
   const newSignals = signals.filter(s => s.id > lastId);
@@ -43,10 +41,11 @@ app.get('/get', (req, res) => {
     return res.send('NONE');
   }
   
-  // Retorna o mais recente
   const latest = newSignals[newSignals.length - 1];
-  console.log(`[GET] Client fetched: ${latest.action} (id: ${latest.id})`);
-  res.send(`${latest.id}|${latest.action}`);
+  const age = Date.now() - latest.timestamp;
+  
+  console.log(`[GET] Client fetched: ${latest.action} (id: ${latest.id}, age: ${age}ms)`);
+  res.send(`${latest.id}|${latest.action}|${age}`);
 });
 
 // Rota de status
@@ -59,6 +58,11 @@ app.get('/clear', (req, res) => {
   signals = [];
   signalIdCounter = 0;
   res.send('CLEARED');
+});
+
+// Rota para pegar o último ID sem executar nada
+app.get('/last_id', (req, res) => {
+  res.send(`${signalIdCounter}`);
 });
 
 const PORT = process.env.PORT || 3000;
